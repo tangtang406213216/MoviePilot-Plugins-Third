@@ -1801,9 +1801,6 @@ class AutoDeleteTr(_PluginBase):
         if not context:
             context = TaskContext()
 
-        if self.__exit_event.is_set():
-            logger.warn('插件服务正在退出，任务终止')
-            return context
         # 全部下载器配置
         downloader_configs: Dict[str, DownloaderConf] = self.__get_downloader_configs()
         if not downloader_configs:
@@ -1813,12 +1810,29 @@ class AutoDeleteTr(_PluginBase):
                 continue
             service_info = self.__get_downloader_service(name=downloader_name)
             if service_info.type == "qbittorrent":
-                self.__run_for_qbittorrent(service_info=service_info, context=context)
-            elif service_info.type == "transmission":
-                self.__run_for_transmission(service_info=service_info, context=context)
+                self.__run_for_qbittorrent_auto(service_info=service_info, context=context)
             if self.__exit_event.is_set():
-                logger.warn('插件服务正在退出，任务终止')
+                logger.warn('未支持的下载器，任务终止')
                 return context
+
+        # if self.__exit_event.is_set():
+        #     logger.warn('插件服务正在退出，任务终止')
+        #     return context
+        # # 全部下载器配置
+        # downloader_configs: Dict[str, DownloaderConf] = self.__get_downloader_configs()
+        # if not downloader_configs:
+        #     return context
+        # for downloader_name, downloader_config in downloader_configs.items():
+        #     if not downloader_name or not self.__check_downloader_config(downloader_config=downloader_config):
+        #         continue
+        #     service_info = self.__get_downloader_service(name=downloader_name)
+        #     if service_info.type == "qbittorrent":
+        #         self.__run_for_qbittorrent(service_info=service_info, context=context)
+        #     elif service_info.type == "transmission":
+        #         self.__run_for_transmission(service_info=service_info, context=context)
+        #     if self.__exit_event.is_set():
+        #         logger.warn('插件服务正在退出，任务终止')
+        #         return context
 
         # 发送通知
         self.__send_notify(context=context)
@@ -1885,10 +1899,90 @@ class AutoDeleteTr(_PluginBase):
                 return context
 
             logger.info(f'下载器[{downloader_name}] - 子任务执行状态: 自动标签={enable_tagging}, 自动做种={enable_seeding}, 自动删种={enable_delete}')
-            #执行自己任务
-            logger.info(f'开始执行QB自己任务',torrents)
+            # 自动标签
+            if enable_tagging:
+                result.set_tagging(self.__tagging_batch_for_qbittorrent(downloader_name=downloader_name, qbittorrent=qbittorrent, torrents=torrents))
+                if self.__exit_event.is_set():
+                    logger.warn(f'插件服务正在退出，任务终止[{downloader_name}]')
+                    return context
+            # 自动做种
+            if enable_seeding:
+                result.set_seeding(self.__seeding_batch_for_qbittorrent(downloader_name=downloader_name, torrents=torrents))
+                if self.__exit_event.is_set():
+                    logger.warn(f'插件服务正在退出，任务终止[{downloader_name}]')
+                    return context
+            # 自动删种
+            if enable_delete:
+                result.set_delete(self.__delete_batch_for_qbittorrent(downloader_name=downloader_name, qbittorrent=qbittorrent, torrents=torrents, context=context))
+                if self.__exit_event.is_set():
+                    logger.warn(f'插件服务正在退出，任务终止[{downloader_name}]')
+                    return context
 
+            logger.info(f'下载器[{downloader_name}] - 任务执行成功')
+        except Exception as e:
+            result.set_success(False)
+            logger.error(f'下载器[{downloader_name}] - 任务执行失败: {str(e)}', exc_info=True)
+        return context
+    
+    def __run_for_qbittorrent_auto(self, service_info: ServiceInfo, context: TaskContext = None) -> TaskContext:
+        """
+        针对qb下载器运行插件任务
+        :param service_info: 下载器服务信息
+        :param context: 任务上下文
+        :return: 任务上下文
+        """
+        # 前置校验
+        if not self.__check_downloader_service(service_info=service_info):
+            return context
+        if service_info.type != "qbittorrent" or not isinstance(service_info.instance, Qbittorrent):
+            return context
+        qbittorrent: Qbittorrent = service_info.instance
+        if not qbittorrent or not qbittorrent.qbc:
+            return context
+        downloader_name = service_info.name
+        if not self.__check_enable_downloader_task(downloader_name=downloader_name):
+            return context
+        if not context.is_selected_the_downloader(downloader_name=downloader_name):
+            return context
+        enable_tagging = True if self.__get_config_item(
+            config_key=f'{downloader_name}_enable_tagging') and context.is_enabled_tagging() else False
+        enable_seeding = True if self.__get_config_item(
+            config_key=f'{downloader_name}_enable_seeding') and context.is_enabled_seeding() else False
+        enable_delete = True if self.__get_config_item(
+            config_key=f'{downloader_name}_enable_delete') and context.is_enabled_delete() else False
+        if not enable_seeding and not enable_tagging and not enable_delete:
+            return context
+        # 任务上下文
+        if not context:
+            context = TaskContext()
+        # 任务结果
+        result = TaskResult(downloader_name)
+        context.save_result(result=result)
+        try:
+            logger.info(f'下载器[{downloader_name}] - 任务执行开始...')
 
+            # 获取全部种子
+            torrents, error = self.__get_torrents_for_qbittorrent(qbittorrent=qbittorrent, with_cache=context.get_use_torrents_cache())
+            if error:
+                logger.warn(f'下载器[{downloader_name}] - 获取种子失败，任务终止')
+                return context
+            if not torrents or len(torrents) <= 0:
+                logger.warn(f'下载器[{downloader_name}] - 没有种子，任务终止')
+                return context
+            result.set_total(len(torrents))
+
+            logger.info(f'12132131321')
+            logger.info(f'下载器[{downloader_name}] - 获取种子完成,种子如下：', torrents.keys())
+
+            # 根据上下文过滤种子
+            selected_torrents = context.get_selected_torrents()
+            torrents = torrents if selected_torrents is None \
+                else [torrent for torrent in torrents if torrent and torrent.hash in selected_torrents]
+            if not torrents or len(torrents) <= 0:
+                logger.warn(f'下载器[{downloader_name}] - 没有目标种子，任务终止')
+                return context
+
+            logger.info(f'下载器[{downloader_name}] - 子任务执行状态: 自动标签={enable_tagging}, 自动做种={enable_seeding}, 自动删种={enable_delete}')
             # # 自动标签
             # if enable_tagging:
             #     result.set_tagging(self.__tagging_batch_for_qbittorrent(downloader_name=downloader_name, qbittorrent=qbittorrent, torrents=torrents))
@@ -1908,7 +2002,7 @@ class AutoDeleteTr(_PluginBase):
             #         logger.warn(f'插件服务正在退出，任务终止[{downloader_name}]')
             #         return context
 
-            #logger.info(f'下载器[{downloader_name}] - 任务执行成功')
+            logger.info(f'下载器[{downloader_name}] - 任务执行成功')
         except Exception as e:
             result.set_success(False)
             logger.error(f'下载器[{downloader_name}] - 任务执行失败: {str(e)}', exc_info=True)
