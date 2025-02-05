@@ -1970,8 +1970,9 @@ class AutoDeleteTr(_PluginBase):
                 logger.warn(f'下载器[{downloader_name}] - 没有种子，任务终止')
                 return context
             result.set_total(len(torrents))
-            
-            logger.info(f'下载器[{downloader_name}] - 获取种子完成,种子如下：', torrents)
+
+            logger.info(f'12132131321')
+            logger.info(f'下载器[{downloader_name}] - 获取种子完成,种子如下：', torrents.keys())
 
             # 根据上下文过滤种子
             selected_torrents = context.get_selected_torrents()
