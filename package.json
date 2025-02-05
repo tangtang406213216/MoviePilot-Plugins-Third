@@ -37,6 +37,18 @@
             "v1.6": "修复事件触发tr打标问题；表单界面优化。"
         }
     },
+    "AutoDeleteTr": {
+        "name": "自动删除TR",
+        "description": "自动删种。",
+        "labels": "下载管理,仪表板",
+        "version": "1.0",
+        "icon": "https://raw.githubusercontent.com/hotlcc/MoviePilot-Plugins-Third/main/icons/DownloaderHelper.png",
+        "author": "tyl",
+        "level": 1,
+        "history": {
+            "v1.0": "开始开发"
+        }
+    },
     "PluginAutoUpgrade": {
         "name": "插件自动升级",
         "description": "定时检测、升级插件。",
@@ -127,18 +139,6 @@
             "v1.2": "新增OneBot-11消息渠道。插件升级后需要重启MP！！！",
             "v1.1": "支持配置渠道策略；修复系统渠道配置修改后运行时不生效的问题。插件升级后需要重启MP！！！",
             "v1.0": "初始版本。"
-        }
-    },
-    "AutoDeleteTr": {
-        "name": "自动删除TR",
-        "description": "自动删种。",
-        "labels": "下载管理,仪表板",
-        "version": "1.0",
-        "icon": "https://raw.githubusercontent.com/hotlcc/MoviePilot-Plugins-Third/main/icons/DownloaderHelper.png",
-        "author": "tyl",
-        "level": 1,
-        "history": {
-            "v1.0": "开始开发"
         }
     }
 }

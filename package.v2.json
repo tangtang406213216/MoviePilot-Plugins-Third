@@ -18,7 +18,7 @@
         "name": "自动删除TR",
         "description": "自动删种。",
         "labels": "下载管理,仪表板",
-        "version": "3.5.6",
+        "version": "1.0",
         "icon": "https://raw.githubusercontent.com/hotlcc/MoviePilot-Plugins-Third/main/icons/DownloaderHelper.png",
         "author": "tyl",
         "level": 1,
